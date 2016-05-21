@@ -90,6 +90,21 @@ else:
         def build_library(self, library, pkg_config, local_source=None, supports_non_srcdir_builds=True):
             return self.pkgconfig(pkg_config)
 
+        def get_source_files(self):
+            """Copied from Distutils' own build_clib, but modified so that it is not
+            an error for a build_info dictionary to lack a 'sources' key. If there
+            is no 'sources' key, then all files contained within the path given by
+            the 'local_sources' value are returned."""
+            self.check_library_list(self.libraries)
+            filenames = []
+            for (lib_name, build_info) in self.libraries:
+                sources = build_info.get('sources')
+                if sources is None or not isinstance(sources, (list, tuple)):
+                    continue
+
+                filenames.extend(sources)
+            return filenames
+
         def build_libraries(self, libraries):
             # Build libraries that have no 'sources' key, accumulating the output
             # from pkg-config.
@@ -102,5 +117,7 @@ else:
                             self.build_args[key] = value
 
             # Use parent method to build libraries that have a 'sources' key.
-            _build_clib.build_libraries(self, ((lib_name, build_info)
-                for lib_name, build_info in libraries if 'sources' in build_info))
+            libs = [(lib_name, build_info)
+                for lib_name, build_info in libraries if 'sources' in build_info]
+            if libs:
+                _build_clib.build_libraries(self, libs)
